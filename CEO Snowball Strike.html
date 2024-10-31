@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CEO Snowball Strike</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        #gameCanvas {
+            border: 2px solid #000;
+            background-color: lightblue;
+            cursor: crosshair;
+        }
+        #scoreboard {
+            font-size: 20px;
+            margin-top: 10px;
+        }
+        #scoreboard ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        #timer {
+            font-size: 24px;
+            color: red;
+            margin-top: 10px;
+        }
+        #playerNameInput, #startGameButton {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>CEO Snowball Strike</h1>
+    <p>Enter your name and throw snowballs!</p>
+    
+    <input type="text" id="playerNameInput" placeholder="Enter player name">
+    <button id="startGameButton">Start Game</button>
+    
+    <div id="timer">Time Left: 30</div>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    
+    <div id="hitCount">Hits: 0</div>
+    <div id="scoreboard">
+        <h2>Scoreboard</h2>
+        <ul id="playerScores"></ul>
+    </div>
+
+    <!-- HTML5 Audio for background music -->
+    <audio id="bgm" src="Game%20BGM.mp3" loop></audio>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const playerNameInput = document.getElementById('playerNameInput');
+        const startGameButton = document.getElementById('startGameButton');
+        const playerScores = document.getElementById('playerScores');
+        const timerDisplay = document.getElementById('timer');
+        const bgm = document.getElementById('bgm');
+
+        const targetImg = new Image();
+        targetImg.src = 'https://i.postimg.cc/zX0HWHNK/Andy-winter.png';
+        const backgroundImg = new Image();
+        backgroundImg.src = 'https://img.freepik.com/free-vector/flat-design-illustration-winter-landscape_23-2149167523.jpg';
+        const snowballImg = new Image();
+        snowballImg.src = 'https://i.postimg.cc/d3XPP9dG/pngimg-com-snowball-PNG16.png';
+        
+        let hitCount = 0;
+        let targetX, targetY;
+        let targetWidth, targetHeight;
+        let snowballs = [];
+        let currentPlayer = '';
+        let scores = {};
+        let timeLeft = 30;
+        let gameInterval;
+        let targetSpeedX = 4;
+        let targetSpeedY = 2;
+
+        targetImg.onload = function() {
+            targetWidth = targetImg.width * 0.50;
+            targetHeight = targetImg.height * 0.50;
+            resetTarget();
+        };
+
+        function resetTarget() {
+            targetX = Math.random() * (canvas.width - targetWidth);
+            targetY = Math.random() * (canvas.height - targetHeight);
+        }
+
+        function drawBackground() {
+            ctx.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
+        }
+
+        function drawTarget() {
+            ctx.drawImage(targetImg, targetX, targetY, targetWidth, targetHeight);
+        }
+
+        function drawSnowballs() {
+            for (let i = 0; i < snowballs.length; i++) {
+                const snowball = snowballs[i];
+                ctx.drawImage(snowballImg, snowball.x, snowball.y, 80, 80);
+                snowball.y -= snowball.speed;
+
+                if (snowball.y < targetY + targetHeight && snowball.y > targetY &&
+                    snowball.x > targetX && snowball.x < targetX + targetWidth) {
+                    snowballs.splice(i, 1);
+                    hitCount++;
+                    document.getElementById('hitCount').innerText = `Hits: ${hitCount}`;
+                }
+            }
+        }
+
+        function moveTarget() {
+            targetX += targetSpeedX;
+            targetY += targetSpeedY;
+
+            if (targetX <= 0 || targetX + targetWidth >= canvas.width) {
+                targetSpeedX = -targetSpeedX;
+            }
+            if (targetY <= 0 || targetY + targetHeight >= canvas.height) {
+                targetSpeedY = -targetSpeedY;
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackground();
+            drawTarget();
+            drawSnowballs();
+            moveTarget();
+        }
+
+        function startTimer() {
+            gameInterval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.innerText = `Time Left: ${timeLeft}`;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(gameInterval);
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            alert('Time is up! The game has ended.');
+            document.getElementById('hitCount').innerText = `Final Hits: ${hitCount}`;
+            updateScoreboard();
+            bgm.pause(); // Pause music when game ends
+        }
+
+        canvas.addEventListener('click', function(event) {
+            if (!currentPlayer) {
+                alert('Please enter a player name to start.');
+                return;
+            }
+
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            snowballs.push({ x: x, y: y, speed: 5 });
+        });
+
+        startGameButton.addEventListener('click', function() {
+            const playerName = playerNameInput.value.trim();
+            if (!playerName) {
+                alert('Please enter a player name to start.');
+                return;
+            }
+
+            currentPlayer = playerName;
+            hitCount = 0;
+            timeLeft = 30;
+            document.getElementById('hitCount').innerText = `Hits: ${hitCount}`;
+            timerDisplay.innerText = `Time Left: ${timeLeft}`;
+
+            if (!scores[currentPlayer]) {
+                scores[currentPlayer] = 0;
+            }
+
+            startTimer();
+            animate();
+
+            // Start the background music
+            bgm.play();
+        });
+
+        function animate() {
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        function updateScoreboard() {
+            scores[currentPlayer] = hitCount;
+            playerScores.innerHTML = '';
+
+            for (const player in scores) {
+                const li = document.createElement('li');
+                li.textContent = `${player}: ${scores[player]} hits`;
+                playerScores.appendChild(li);
+            }
+        }
+    </script>
+</body>
+</html>
